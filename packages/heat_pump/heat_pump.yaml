@@ -1,0 +1,90 @@
+########################################################################################################################
+#                                                                                                                      #
+#                                                                                                                      #
+#                                      ******   HEAT PUMP MANAGEMENT   ******                                          #
+#                                      **      PACKAGE  - VER. 0.0.1       **                                          #
+#                                      **    AUTHOR: ANTONIO CHIUMIENTO    **                                          #
+#                                                                                                                      #
+#                                                                                                                      #
+########################################################################################################################
+
+homeassistant:
+  time_zone: Europe/Rome
+  customize:
+    package.node_anchors:
+      customize: &customize
+        package: "Heat Pump Management 0.0.1"
+        author: "Antonio Chiumiento"
+########################################################################################################################
+#                                                                                                                      #
+#                                                                                                                      #
+#                                       ******   COUNTER - HEAT PUMP   ******                                          #
+#                                                                                                                      #
+#                                                                                                                      #
+########################################################################################################################
+counter:
+  ######################################################################################################################
+  # COUNTER OF DEFROSTINGS THAT HAPPENED DURING THE DAY                                                                #
+  ######################################################################################################################
+  pdc_defrosting:
+    name: "Defrostings that happened during the day"
+    initial: 0
+    step: 1
+    restore: true
+########################################################################################################################
+#                                                                                                                      #
+#                                                                                                                      #
+#                                    ******   INPUT BOOLEAN - HEAT PUMP   ******                                       #
+#                                                                                                                      #
+#                                                                                                                      #
+########################################################################################################################
+input_boolean:
+  ######################################################################################################################
+  # BOOLEAN INPUT OF THE INTERMEDIATE STATE OR WHEN THE HEAT PUMP STARTS THE DEFROST MODE                              #
+  ######################################################################################################################
+  pdc_defrosting_monitor:
+    name: PDC Intermediate Defrost Monitor
+    initial: false
+########################################################################################################################
+#                                                                                                                      #
+#                                                                                                                      #
+#                                     ******   AUTOMATION - HEAT PUMP   ******                                         #
+#                                                                                                                      #
+#                                                                                                                      #
+########################################################################################################################
+automation:
+  ######################################################################################################################
+  # AUTOMATION ACTIVATES THE BOOLEAN DEFROST MONITOR INPUT WHEN THE HEAT PUMP STARTS DEFROST MODE                      #
+  ######################################################################################################################
+  - alias: PDC - Activate Monitor
+    triggers:
+      - trigger: state
+        entity_id: sensor.defrosting
+        from: "OFF"
+        to: "ON"
+    actions:
+      - action: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.pdc_defrosting_monitor
+    mode: single
+  ######################################################################################################################
+  # AUTOMATION INCREASES THE DEFROST COUNTER WHEN THE HEAT PUMP EXITS DEFROST MODE TO RETURN TO HEATING MODE           #
+  ######################################################################################################################
+  - alias: PDC - Increase Counter
+    triggers:
+      - trigger: state
+        entity_id: sensor.defrosting
+        from: "ON"
+        to: "OFF"
+    condition:
+      - condition: state
+        entity_id: input_boolean.pdc_defrosting_monitor
+        state: "on"
+    actions:
+      - action: counter.increment
+        target:
+          entity_id: counter.pdc_defrosting
+      - action: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.pdc_defrosting_monitor
+    mode: single
